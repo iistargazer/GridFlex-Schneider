@@ -1,0 +1,91 @@
+{
+ "forecast": {
+  "load_mape_pct": 5.427600727781357,
+  "pv_nmae_pct": 2.8369893449427313
+ },
+ "metrics": {
+  "status_quo": {
+   "critical_served_pct": 92.65109389515746,
+   "outage_hours_per_day": 1.5535714285714286,
+   "evening_availability_pct": 72.85714285714286,
+   "unserved_critical_kwh_per_day": 30.08325421007068,
+   "flex_unserved_kwh_per_day": 7.848806952186318,
+   "curtailment_pct": 0.0,
+   "peak_import_kw": 51.9892278837921,
+   "evening_peak_import_kw": 41.40165696914592,
+   "grid_energy_kwh_per_day": 468.70819747902686,
+   "bill_inr_per_hh_month": 1275.9655956712002
+  },
+  "unmanaged": {
+   "critical_served_pct": 95.54560291295581,
+   "outage_hours_per_day": 0.8928571428571429,
+   "evening_availability_pct": 82.85714285714285,
+   "unserved_critical_kwh_per_day": 18.234381826411934,
+   "flex_unserved_kwh_per_day": 5.4584640538464715,
+   "curtailment_pct": 40.70175294043657,
+   "peak_import_kw": 51.9892278837921,
+   "evening_peak_import_kw": 38.891155834510265,
+   "grid_energy_kwh_per_day": 202.09873648848725,
+   "bill_inr_per_hh_month": 527.1017351139424
+  },
+  "gridflex": {
+   "critical_served_pct": 99.35259629939088,
+   "outage_hours_per_day": 0.125,
+   "evening_availability_pct": 97.85714285714285,
+   "unserved_critical_kwh_per_day": 2.650191718891449,
+   "flex_unserved_kwh_per_day": -1.6240976817373718e-14,
+   "curtailment_pct": 48.30215597010957,
+   "peak_import_kw": 80.0,
+   "evening_peak_import_kw": 31.44225712993008,
+   "grid_energy_kwh_per_day": 261.5452979833954,
+   "bill_inr_per_hh_month": 596.7150898778541
+  }
+ },
+ "economics": {
+  "capex_total_inr": 720000.0,
+  "capex_per_hh_inr": 9000.0,
+  "annualised_cost_per_hh_month_inr": 173.47713103245013,
+  "bill_saving_per_hh_month_inr": -69.61335476391173,
+  "avoided_unserved_kwh_per_hh_month": 5.844071290320182,
+  "outage_value_per_hh_month_inr": 175.32213870960544,
+  "total_benefit_per_hh_month_inr": 105.70878394569371,
+  "net_per_hh_month_inr": -67.76834708675642,
+  "breakeven_fee_per_hh_month_inr": 243.09048579636186
+ },
+ "config": {
+  "dt": 0.25,
+  "H": 96,
+  "resolve_every": 4,
+  "n_days": 60,
+  "n_test_days": 14,
+  "n_hh": 80,
+  "pv_kwp": 100.0,
+  "bat_kwh": 100.0,
+  "bat_kw": 40.0,
+  "eta": 0.95,
+  "soc_min_frac": 0.1,
+  "soc0_frac": 0.5,
+  "flex_rate_kw": 60.0,
+  "cap_normal": 80.0,
+  "cap_stress": 20.0,
+  "tariff_offpeak": 5.0,
+  "tariff_normal": 7.0,
+  "tariff_peak": 9.5,
+  "deg_cost": 1.5,
+  "voll_critical": 60.0,
+  "voll_flex": 20.0,
+  "curt_pen": 4.0,
+  "backlog_pen": 0.15,
+  "term_soc_val": 4.0,
+  "term_backlog": 5.0,
+  "reserve_frac": 0.3,
+  "reserve_pen": 0.5,
+  "risk": 0.5,
+  "bat_capex_per_kwh": 6000.0,
+  "controls_capex_per_hh": 1500.0,
+  "annual_om_frac": 0.03,
+  "life_years": 8,
+  "discount": 0.12,
+  "voll_household": 30.0
+ }
+}
