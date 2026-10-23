@@ -86,7 +86,7 @@ reliability before expanding.
 
     pip install numpy pandas scipy scikit-learn matplotlib pytest
     python run.py --oracle --seeds 20 --workers 8    # ~35 min, writes outputs/ + docs/ASSUMPTIONS.md
-    python -m pytest tests                           # 16 tests, ~40 s
+    python -m pytest tests -q                        # 30 tests, ~12 s
     python run.py --quick --no-whatif                # ~4 min smoke test
 
 Data are cached in `data/hyderabad/`; `--refresh-weather` re-fetches them. The dashboard is a
@@ -100,19 +100,41 @@ means in `results.json` are the numbers to quote; the single-seed column is one 
 **What each run writes.** `outputs/results.json` (metrics for seven scenarios, 20-seed CIs and
 95 % intervals, ablation, equity incl. rule sensitivity, economics, sizing on two tariff schemes,
 what-if grid, DISCOM console, full assumption registry), `outputs/dashboard.html`,
-`outputs/{scenarios,day_plot,sizing,voltage}.png`, `docs/ASSUMPTIONS.md`, `docs/DATA.md`.
+`outputs/site/index.html`, `outputs/{scenarios,day_plot,sizing,voltage}.png`,
+`docs/ASSUMPTIONS.md`, `docs/DATA.md`.
 
 **Regression tests** cover energy balance and cap/voltage/SOC limits per scenario, flexible
 windows, optimiser fallback, battery limits, metric ranges, equal-per-household allocation, the
 feeder model, economics ranges, data calibration, forecast leakage (no future information), and
 the three newer surfaces: DISCOM actions are non-empty/ranked/monetised, the lifeline tariff axis
 moves the frontier by exactly the fee, and the allocation rule is measurable on a stressed feeder.
+`tests/test_artifacts.py` adds the artefact guards described below.
+
+## The dashboard is a build artefact
+
+The page is source, not output: `gridflex/dashboard.py` holds the HTML, CSS, Chart.js code and
+copy, `gridflex/report.py` assembles the payload and the PNG figures, and `make_dashboard(payload,
+path, site_path)` writes the same rendered string to `outputs/dashboard.html` and
+`outputs/site/index.html`. There is exactly one owner of both files, so they cannot drift; both
+are committed.
+
+- **Regenerate:** `python run.py` (a full run) is the supported path - it rebuilds the payload and
+the page together. Do not hand-edit or copy either HTML file.
+- **Verify:** `python -m pytest tests/test_artifacts.py` re-renders a page and checks the writer
+  emits identical local and publishable copies with no sidecar asset; it also compares the two
+  committed files byte for byte and checks eleven headline figures still appear in the docs.
+- **Inspect:** open `outputs/dashboard.html` directly (file path is fine) or serve
+  `outputs/site/`. Seven tabs: Overview, Scenarios, DISCOM, Equity, Economics, What-if, Method.
+- **No network:** Chart.js is inlined at build time, so the page makes no requests and needs no
+  CDN, server or API key.
 
 ## Version control and the delivered build
 
-The deliverable is one local commit on top of the handoff baseline (`Baseline: original GridFlex
-prototype as handed off`). There is **no remote**: `git remote -v` is empty by design, so nothing
-has been pushed. Adding one is a single command when a host is chosen:
+The deliverable is a short local history on top of the handoff baseline (`Baseline: original
+GridFlex prototype as handed off`): the build itself, the fix that made the publishable copy a
+build output, the dashboard redesign, and the documentation pass that followed it. There is still
+**no remote**: `git remote -v` is empty, so nothing has been pushed. The submission repository
+exists but is not wired in yet; adding it and pushing is the next step:
 
     git remote add origin <url> && git push -u origin master
 
@@ -125,7 +147,7 @@ for the simulation itself):
 
     pip install numpy pandas scipy scikit-learn matplotlib pytest
     python run.py --oracle --seeds 20 --workers 8    # 35 min, rewrites outputs/ and docs/ASSUMPTIONS.md
-    python -m pytest tests -q                        # 16 tests
+    python -m pytest tests -q                        # 30 tests
     python -m http.server 8000                       # open http://localhost:8000/outputs/dashboard.html
 
 **What is committed, and why**
@@ -146,7 +168,7 @@ place rather than deleted so the baseline history and the current tree stay comp
 
 ## Publishing the demo
 
-Upload **one file**: `outputs/site/index.html` (about 570 KB). It is written by the same
+Upload **one file**: `outputs/site/index.html` (about 630 KB). It is written by the same
 `make_dashboard` call that writes `outputs/dashboard.html`, so the two are byte-identical, and it
 is fully self-contained: Chart.js is inlined, all 14 days of scenario data are embedded, there are
 no external requests and no absolute paths. It renders the same from a file path or a web server,
@@ -166,7 +188,8 @@ Choose one host:
    needs a static-assets manifest plus an explicit publish step. The URL is public, so publish only
    with the owner's go-ahead; the free plan allows three published sites.
 
-Check the page after upload: the KPI row should read `0.87 h/day`, `94.4%`, `97.1%`, `28.5 kW`,
-`451 ₹`; all seven tabs should open; and the browser console should be empty. Nothing in the page
+Check the page after upload: the hero should read `0.87 h/day` with the 95 % CI line under it; the
+six indicator cards should read `94.4%`, `97.1%`, `10.0 kWh/day`, `28.4 kW`, `451 ₹/month` and
+`56.8%`; all seven tabs should open; and the browser console should be empty. Nothing in the page
 needs a server, so if a host adds redirects or rewrites, disable them - a plain static file is the
 intended deployment.

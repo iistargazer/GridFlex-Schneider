@@ -10,14 +10,15 @@ No hardware. Every number below is in `outputs/results.json`.
 | Solution write-up, Indian conditions | [`docs/WRITEUP.md`](WRITEUP.md) | 9 sections, ~1,500 words, all figures sourced |
 | Architecture / flow diagram | [`docs/architecture.png`](architecture.png), [`docs/architecture.html`](architecture.html) | data → forecast → MILP → plant → metrics → artefacts |
 | Design artefacts | dashboard (7 tabs) + `outputs/day_plot.png`, `outputs/scenarios.png`, `outputs/sizing.png`, `outputs/voltage.png` | screenshots for the deck |
-| Prototype / simulation | `run.py` + `gridflex/` | 7 scenarios, 16 tests, ~35 min full run |
+| Prototype / simulation | `run.py` + `gridflex/` | 7 scenarios, 30 tests, ~35 min full run |
 | Measurable reliability gain vs baseline | 4.52 → 1.77 → **0.87** interrupted critical h/day (20-seed means) | grid only → unmanaged PV+battery → GridFlex |
 | Ownership, O&M, unit economics | [`docs/OPERATIONS.md`](OPERATIONS.md) + Economics tab | ₹144.6/hh-month cost, +₹126.0 net value |
 | Deck | [`docs/DECK.md`](DECK.md) | 11 slides, speaker notes, 3-minute demo script |
 
 The demo itself is `outputs/dashboard.html` — a single self-contained file (Chart.js vendored
-inside), works with no network, no server, no API key. `outputs/site/index.html` is the same page
-packaged for static hosting.
+inside), works with no network, no server, no API key. `outputs/site/index.html` is byte-identical
+to it, written by the same `make_dashboard` call for static hosting. The page is built from
+`gridflex/dashboard.py`; `gridflex/report.py` assembles its payload and the PNG figures.
 
 ## 2. Form fields (draft answers)
 
@@ -52,8 +53,20 @@ packaged for static hosting.
 
 ## 4. Demo script (3 minutes)
 
-See §"Demo script" in [`docs/DECK.md`](DECK.md). Order: Overview → Scenarios → DISCOM →
-Equity → Economics → What-if → Method. Keep the Method tab for the credibility close.
+Seven tabs, in the order a judge should see them:
+
+| Tab | What it answers |
+|---|---|
+| Overview | Did the neighbourhood stay supplied? Headline h/day with its 95 % CI, the ladder against grid-only and uncontrolled PV + battery, six indicators with deltas, a supply ribbon and the selected day's dispatch plus the controller's reasons |
+| Scenarios | Which component earns the gain? Ranked ablation, all scenarios side by side, the bill each buys, and the 20-seed means with CI range bars |
+| DISCOM | What does the feeder engineer see? 24-cell risk strip, shortfall and voltage curves, ranked actions with rupee credits |
+| Equity | Who gets the critical energy? Archetype cards, Jain index, proportional-rule sensitivity |
+| Economics | What does it cost and return? Cost/value ledger to net value, VoLL range bar, sizing frontier, fee tiers |
+| What-if | Size it for your feeder: 36 precomputed cases as discrete presets, plus the day player |
+| Method | What is real, modelled, assumed? Provenance cards, forecast accuracy, limitations, every assumption with its source |
+
+See §"Demo script" in [`docs/DECK.md`](DECK.md) for what to say on each. Keep the Method tab for
+the credibility close.
 
 ## 5. Before you submit — checklist
 
@@ -63,11 +76,12 @@ Equity → Economics → What-if → Method. Keep the Method tab for the credibi
 - [x] Ablation (DR, ML vs persistence, control vs rule)
 - [x] Affordability with lifeline tariff axis and Pareto/knee
 - [x] Equity with metered flows and a rule sensitivity
-- [x] Digital-twin what-if grid: battery × outage × cloudiness × EV/2W share (36 runs), sliders in the What-if tab
+- [x] Digital-twin what-if grid: battery × outage × cloudiness × EV/2W share (36 runs), discrete presets in the What-if tab
 - [x] DISCOM console with ranked, monetised actions
 - [x] Voltage-lite + technical loss, violations counted
-- [x] Offline dashboard, 7 tabs, per-step explanations
-- [x] Tests (16) covering balance, limits, windows, fallback, equity, sizing, console
+- [x] Offline dashboard, 7 tabs, per-step explanations, one self-contained file written twice
+- [x] Tests (30) covering balance, limits, windows, fallback, equity, sizing, console, plus the
+      dashboard/site byte-identity and doc-figure drift guards
 - [x] README, write-up, deck script, operations, assumptions, data provenance
 - [ ] Hosted demo URL — `outputs/site/` is ready; needs a host/account to publish
 - [ ] Pilot partner (RWA + feeder engineer) — not started

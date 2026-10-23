@@ -19,7 +19,7 @@ PV is gone by 19:00. A battery on a self-consumption rule is empty when the outa
 
 ## 3. What we built
 Forecast → hourly MILP (96 × 15 min, HiGHS) → dispatch → measured outcomes.
-35 min full run, 16 tests, 7 scenarios on identical draws.
+35 min full run, 30 tests, 7 scenarios on identical draws.
 Battery, flexible windows (pump / hot water / EV), grid-charge cap, export, outage reserve,
 feeder voltage limit, equal-per-household allocation.
 *Visual: docs/architecture.png.*
@@ -75,12 +75,18 @@ Ask: a feeder and a second-life battery partner.
 ---
 
 ### Demo script (3 minutes, `outputs/dashboard.html`, offline)
-1. Overview: headline h/day with the CI label, day view on the worst day, "why the controller
-   acted" list.
-2. Scenarios tab: ablation bars + the 20-seed CI table.
-3. DISCOM tab: risk curve, voltage, ranked actions with rupee credits.
-4. Equity tab: three archetypes + the rule sensitivity line.
-5. Economics tab: KPI row, sizing frontier (two tariff schemes), fee table.
-6. What-if tab: battery, outage stress, cloudiness and EV/2W share sliders (36 precomputed
-   simulations), day player.
-7. Method tab: the assumption table — stop here if time is short; it is the credibility slide.
+1. Overview: the headline h/day with its CI, the reliability ladder beside it (grid only →
+   unmanaged PV + battery → GridFlex), the six indicator cards, then the selected day's supply
+   ribbon, dispatch and "why the controller acted" list.
+2. Scenarios tab: ablation bars, the side-by-side table, and the 20-seed CI ranges. Say the
+   persistence result out loud here, not at the end.
+3. DISCOM tab: the 24-cell risk strip, shortfall and voltage charts, ranked actions with rupee
+   credits.
+4. Equity tab: three archetype cards with metered meters, Jain index, and the proportional-rule
+   sensitivity.
+5. Economics tab: the cost/value ledger down to net value, the VoLL range bar, the sizing frontier
+   (each battery size labelled), fee tiers.
+6. What-if tab: battery, outage stress, cloudiness and EV/2W presets over 36 precomputed
+   simulations, then the dark day player — scrub a real held-out day quarter by quarter.
+7. Method tab: provenance cards and the assumption table — stop here if time is short; it is the
+   credibility slide.

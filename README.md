@@ -10,6 +10,7 @@ Everything below is produced by one command on real Hyderabad weather:
 
     pip install numpy pandas scipy scikit-learn matplotlib pytest
     python run.py --oracle --seeds 20 --workers 8      # ~35 min (measured 2,121 s)
+    python -m pytest -q                                # 30 tests, ~12 s
     open outputs/dashboard.html                        # self-contained, works offline
 
 ## Headline (14 held-out days, 60-day replay)
@@ -50,7 +51,8 @@ self-consumed 57.1 %, curtailment 0 %, export 203 kWh/day, transformer peak 77.6
 0.940 pu with **0** violations of the CEA ±6 % band, SAIDI-like 63 min/day (grid only 299).
 The digital-twin what-if grid is precomputed too: 36 real simulations over battery size
 (70/100/150 kWh) × outage rate (0.75/1.0/1.25×) × cloudiness (100 %/80 % of clear-sky PV) ×
-e-rickshaw/2W charging share (1.0×/1.6×), all exposed as sliders in the What-if tab.
+e-rickshaw/2W charging share (1.0×/1.6×), exposed as discrete presets in the What-if tab — the
+page never interpolates between runs.
 
 ## What is real, what is modelled
 
@@ -100,6 +102,26 @@ discharge into the evening peak (39.8 kW, 101 kWh, ₹708/day), charge from roof
 that produced the rupee figure, plus 24 h outage-risk and expected-shortfall curves from the
 feeder's own outage history, technical loss (2.78 kWh/day, 1.33 kW at peak) and voltage.
 
+## The dashboard a judge opens
+
+`outputs/dashboard.html` is the deliverable: one self-contained file, Chart.js inlined and the
+whole results payload embedded, with no network requests at view time. Seven tabs, each answering
+a different question:
+
+| Tab | What it shows |
+|---|---|
+| Overview | The headline (0.87 h/day, 20-seed mean and CI) with a reliability ladder against the bare grid and uncontrolled PV + battery, six indicators with deltas, a 96-step supply ribbon, the selected day's dispatch and the controller's own reasons |
+| Scenarios | The ablation ranked as bars, every scenario side by side, the bill each one buys, and the 20-seed means with 95 % CI drawn as range bars |
+| DISCOM | A 24-cell feeder-risk strip, expected shortfall and net load, end-of-feeder voltage, and the ranked DR actions with their rupee credit |
+| Equity | The three archetypes with metered served energy, the Jain index, and the proportional-allocation sensitivity |
+| Economics | Cost/value ledger down to the net figure, the VoLL range bar, the sizing frontier labelled by battery size, fee tiers and the cost build-up |
+| What-if | 36 precomputed cases over battery × outage stress × PV × EV share, plus a day player that scrubs a held-out day quarter by quarter |
+| Method | Provenance cards (real / modelled / calibrated), forecast accuracy, the controller flow, limitations and every assumption with its source |
+
+`outputs/site/index.html` is byte-identical, written by the same `make_dashboard` call for static
+hosting. `tests/test_artifacts.py` fails if the pair diverges, if the page gains an external
+asset, or if a headline figure quoted in these docs stops matching `outputs/results.json`.
+
 ## Repository map
 
 | File | Responsibility |
@@ -116,12 +138,13 @@ feeder's own outage history, technical loss (2.78 kWh/day, 1.33 kW at peak) and 
 | `gridflex/economics.py` | capex/CRF, bill split by meter, VoLL, DISCOM credit, fee tiers |
 | `gridflex/sizing.py` | battery × tariff-scheme sweep, Pareto/knee on low-income net cost |
 | `gridflex/discom.py` | feeder risk, loss, ranked DR actions with rupee credit |
-| `gridflex/report.py` | seven-tab offline dashboard + PNG figures |
+| `gridflex/report.py` | results payload for the page + the matplotlib PNG figures |
+| `gridflex/dashboard.py` | the page itself: HTML/CSS/Chart.js, tab composition and copy |
 | `gridflex/explain.py` | per-step controller reasons shown in the dashboard |
 
-Artefacts: `outputs/dashboard.html` (offline, 7 tabs), `outputs/results.json` (all metrics, CIs,
-ablation, assumptions), `outputs/{scenarios,day_plot,sizing,voltage}.png`,
-`outputs/site/` (deployable copy of the dashboard), and `docs/`:
+Artefacts: `outputs/dashboard.html` (offline, 7 tabs) and its byte-identical publishing copy
+`outputs/site/index.html`; `outputs/results.json` (all metrics, CIs, ablation, assumptions);
+`outputs/{scenarios,day_plot,sizing,voltage}.png`; and `docs/`:
 `WRITEUP.md` (submission write-up), `DECK.md` (slide-by-slide), `SUBMISSION_GUIDE.md` (form and
 demo script), `ASSUMPTIONS.md` (generated), `DATA.md` (generated), `OPERATIONS.md` (ownership,
 O&M, failure modes), `architecture.html` + `architecture.png`.

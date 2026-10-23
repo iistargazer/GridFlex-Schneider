@@ -149,7 +149,19 @@ no hardware-in-the-loop and no pilot. Each of these is visible in the dashboard'
 ## 9. Reproduce
 
     python run.py --oracle --seeds 20 --workers 8      # 35 min → outputs/, docs/ASSUMPTIONS.md
-    python -m pytest tests                             # 16 tests, 40 s
+    python -m pytest tests -q                          # 30 tests, ~12 s
 
-Artefacts: `outputs/results.json` (every metric, CI, ablation, assumption),
-`outputs/dashboard.html` (seven tabs, offline), PNG figures, and this document set.
+`run.py` writes the page twice from one payload: `outputs/dashboard.html` for opening offline and
+`outputs/site/index.html` for hosting. They are byte-identical by construction, and
+`tests/test_artifacts.py` fails if the pair diverges or if a figure quoted in these docs stops
+matching `outputs/results.json`.
+
+The page itself lives in `gridflex/dashboard.py`; `report.py` assembles its payload and the PNG
+figures. Seven tabs: Overview (headline, reliability ladder, supply ribbon, day view), Scenarios
+(ablation and CI ranges), DISCOM (risk strip, voltage, monetised actions), Equity (archetypes,
+Jain, rule sensitivity), Economics (ledger, VoLL range, sizing frontier, fee tiers), What-if
+(36 precomputed cases, day player), and Method (provenance, forecast accuracy, limitations,
+assumptions).
+
+Artefacts: `outputs/results.json` (every metric, CI, ablation, assumption), the two dashboard
+files, PNG figures, and this document set.

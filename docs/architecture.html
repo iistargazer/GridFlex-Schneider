@@ -63,7 +63,7 @@
     <div class="node"><b>Real-time correction</b><span>execute first hour, emergency discharge, priority shedding, flexible load deferral</span></div>
     <div class="node"><b>Fallback rule engine</b><span>if the optimiser or network is unavailable, hold reserve and protect the lifeline circuit</span></div>
     <div class="node money"><b>Equity dispatcher</b><span>equal critical energy per household before any second share; lifeline tier free</span></div>
-    <div class="node data"><b>Explainability + audit</b><span>per-step reason strings, invariant checks, results.json</span></div>
+    <div class="node data"><b>Explainability + audit</b><span>per-step reason strings, invariant checks, results.json → dashboard</span></div>
   </div>
 
   <div class="mid"><div><b>dispatch</b><br>↓<br><b>analytics</b><br>↓<br><b>payments</b><br>↓</div></div>
@@ -86,5 +86,6 @@
 <div class="foot">
   Simulation scope in this prototype: forecast → MILP → plant model with a three-branch LinDistFlow feeder, real Hyderabad weather and archived day-ahead forecasts, calibrated load and outages.
   <span class="tag">no hardware</span><span class="tag">no commercial solver</span><span class="tag">static dashboard</span>
+  <div style="margin-top:7px">Dashboard: one self-contained HTML file (Chart.js inlined, no network at view time) built by <code>gridflex/dashboard.py</code>; <code>make_dashboard</code> writes <code>outputs/dashboard.html</code> and a byte-identical <code>outputs/site/index.html</code>. Seven tabs: Overview, Scenarios, DISCOM, Equity, Economics, What-if, Method.</div>
 </div>
 </body></html>
