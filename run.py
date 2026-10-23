@@ -312,7 +312,8 @@ def main():
     payload = build_payload(p, df, runs, M, acc, econ, equity, size,
                             dict(results=whatif), discom, ci=ci, provenance=prov,
                             headline=headline)
-    make_dashboard(payload, "outputs/dashboard.html")
+    make_dashboard(payload, "outputs/dashboard.html",
+                   site_path="outputs/site/index.html")
     make_plots(p, df, runs, M, size, "outputs")
     results["meta"]["runtime_s"] = round(time.time() - t_start, 1)
     results["meta"]["dashboard"] = "outputs/dashboard.html"

@@ -6,7 +6,3 @@ __pycache__/
 # generated run state - reproduce with the command in docs/OPERATIONS.md
 outputs/*.log
 *.pid
-
-# copied out of gridflex/assets/ on every build; the dashboard embeds it inline
-outputs/chart.umd.min.js
-outputs/site/chart.umd.min.js

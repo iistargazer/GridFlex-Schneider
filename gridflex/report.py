@@ -5,7 +5,6 @@ no server, no CDN, no API keys.
 """
 import json
 import os
-import shutil
 
 import matplotlib
 matplotlib.use("Agg")
@@ -89,16 +88,20 @@ def pd_now():
     return datetime.datetime.now().strftime("%d %b %Y %H:%M")
 
 
-def make_dashboard(payload, path):
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+def make_dashboard(payload, path, site_path=None):
+    """Write the self-contained dashboard, plus its publishable copy.
+
+    One writer, one HTML string: the local page and the file a judge uploads are
+    written in the same call, so they cannot drift apart. Chart.js is inlined, so
+    no sidecar asset is produced and the page works from a file path or a server.
+    """
     chart = open(ASSET, encoding="utf-8").read()
     html = HTML.replace('<script src="chart.umd.min.js"></script>',
                         f"<script>{chart}</script>")
     html = html.replace("__DATA__", json.dumps(payload, default=float))
-    open(path, "w", encoding="utf-8").write(html)
-    # sidecar copy for hosts that prefer a separate asset; the page itself is self-contained
-    if os.path.dirname(path):
-        shutil.copyfile(ASSET, os.path.join(os.path.dirname(path), "chart.umd.min.js"))
+    for target in ([path] if not site_path else [path, site_path]):
+        os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+        open(target, "w", encoding="utf-8").write(html)
 
 
 # ---------------------------------------------------------------------------
