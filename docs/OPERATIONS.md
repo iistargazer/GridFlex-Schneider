@@ -130,17 +130,20 @@ the page together. Do not hand-edit or copy either HTML file.
 
 ## Version control and the delivered build
 
-The deliverable is a short local history on top of the handoff baseline (`Baseline: original
+The deliverable is a short linear history on top of the handoff baseline (`Baseline: original
 GridFlex prototype as handed off`): the build itself, the fix that made the publishable copy a
-build output, the dashboard redesign, and the documentation pass that followed it. There is still
-**no remote**: `git remote -v` is empty, so nothing has been pushed. The submission repository
-exists but is not wired in yet; adding it and pushing is the next step:
+build output, the dashboard redesign, and the documentation pass that followed it. It is pushed to
+the submission repository and `master` is its default branch:
 
-    git remote add origin <url> && git push -u origin master
+    origin  https://github.com/iistargazer/GridFlex-Schneider
+    branch  master, tracking origin/master
 
-The build commit adds the source, tests, docs and the rendered artefacts. Read its hash with:
+Check that the remote still matches local before quoting a commit:
 
-    git log -1 --format='%H %s'
+    git log --oneline -1 && git ls-remote origin
+
+The history is only ever appended: no force-push, no rewritten commits. Read the tip with
+`git log -1 --format='%H %s'`.
 
 **Reproduce from a clean clone** (the cached real weather is committed, so no network is needed
 for the simulation itself):
@@ -180,10 +183,10 @@ Choose one host:
 1. **Netlify Drop (fastest, no CLI or account needed to start).** Open <https://app.netlify.com/drop>
    in a browser and drag the `outputs/site` folder onto the page. A public URL appears in seconds;
    claim the site with an account only if it should stay up permanently.
-2. **GitHub Pages (needs the repo remote first).** `git remote add origin <url>`, `git push -u
-   origin master`, then in the repository: Settings -> Pages -> Deploy from a branch, pick a
-   `gh-pages` branch whose root contains `index.html`. Pages serves a branch root, not
-   `outputs/site/`, so put the file at the root of that branch.
+2. **GitHub Pages (origin is already configured).** Push any new commits, then in the repository:
+   Settings -> Pages -> Deploy from a branch, pick a `gh-pages` branch whose root contains
+   `index.html`. Pages serves a branch root, not `outputs/site/`, so put the file at the root of
+   that branch rather than pointing Pages at `master`.
 3. **Freebuff Sites (in-app, Worker-backed).** Creates a project under this Freebuff account and
    needs a static-assets manifest plus an explicit publish step. The URL is public, so publish only
    with the owner's go-ahead; the free plan allows three published sites.
