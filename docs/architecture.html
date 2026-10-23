@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>GridFlex architecture</title>
+<style>
+  :root{--ink:#14211b;--muted:#5d6b62;--line:#c7d3ca;--pv:#e8a33d;--grid:#5b7fbf;--bat:#1f7a4d;--load:#5d6b62;--money:#a8742b;--data:#7a5fa8}
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px 32px 34px;background:#fff;color:var(--ink);
+       font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;width:1500px}
+  h1{font-size:22px;margin:0 0 2px}
+  .sub{color:var(--muted);font-size:12.5px;margin-bottom:16px}
+  .legend{display:flex;gap:18px;font-size:11.5px;color:var(--muted);margin:6px 0 16px}
+  .legend i{display:inline-block;width:22px;height:3px;vertical-align:middle;margin-right:5px}
+  .cols{display:grid;grid-template-columns:1.05fr 1.25fr 1fr;gap:18px}
+  .panel{border:1px solid var(--line);border-radius:14px;padding:12px;position:relative;background:#fcfdfc}
+  .panel h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+  .node{border:1.5px solid var(--line);border-radius:10px;padding:9px 11px;margin:8px 0;background:#fff}
+  .node b{display:block;font-size:13px}
+  .node span{color:var(--muted);font-size:11.5px}
+  .node.pv{border-color:var(--pv)} .node.grid{border-color:var(--grid)}
+  .node.bat{border-color:var(--bat)} .node.data{border-color:var(--data)}
+  .node.money{border-color:var(--money)}
+  .flow{font-size:11.5px;color:var(--muted);margin:2px 0 6px 6px}
+  .arrow{height:14px;display:flex;align-items:center;justify-content:center;color:var(--line);
+         font-size:16px;line-height:1}
+  .diagram{display:grid;grid-template-columns:1fr 54px 1.25fr 54px 1fr;align-items:start;gap:0;
+           border:1px solid var(--line);border-radius:16px;padding:14px;background:#fbfcfb}
+  .mid{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:10.5px;
+       text-align:center;line-height:1.3;padding-top:90px}
+  .mid b{display:block;font-size:11px;color:var(--ink)}
+  .stage{display:flex;flex-direction:column;gap:7px}
+  .stage .node{margin:0}
+  .lane{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+  .lane .box{border:1px dashed var(--line);border-radius:10px;padding:9px}
+  .lane b{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .lane p{margin:4px 0 0;font-size:11.5px;color:var(--muted)}
+  .foot{margin-top:14px;font-size:11px;color:var(--muted)}
+  .tag{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:1px 7px;font-size:10.5px;color:var(--muted);margin-left:4px}
+</style></head><body>
+<h1>GridFlex — neighbourhood flexibility architecture</h1>
+<div class="sub">One 11 kV / 415 V distribution transformer area · 80 homes · 100 kWp rooftop PV · 100 kWh shared battery · software-only, no hardware replacement</div>
+<div class="legend">
+  <span><i style="background:var(--pv)"></i>energy flow</span>
+  <span><i style="background:var(--data)"></i>data flow</span>
+  <span><i style="background:var(--money)"></i>money flow</span>
+  <span><i style="background:var(--load)"></i>control</span>
+</div>
+
+<div class="diagram">
+  <div class="stage">
+    <div class="node pv"><b>Rooftop PV · 100 kWp</b><span>existing consumer-owned arrays, net-metered</span></div>
+    <div class="node grid"><b>Distribution transformer · 100 kVA</b><span>contracted import cap, DISCOM stress windows</span></div>
+    <div class="node bat"><b>Community battery · 100 kWh / 40 kW</b><span>second-life LFP, RWA/cooperative owned</span></div>
+    <div class="node"><b>Critical loads</b><span>lights, fans, fridge, router, pump — the lifeline circuit</span></div>
+    <div class="node"><b>Flexible loads</b><span>pumping 09–16 h, geysers 05–08 h, 2W/e-rickshaw 21–06 h</span></div>
+    <div class="node data" style="border-color:var(--line)"><b>Smart plugs + gateway</b><span>848 ₹/plug, local relay, 15-min metering</span></div>
+  </div>
+
+  <div class="mid"><div><b>energy</b><br>↓ ↑<br><b>metering</b><br>↓</div></div>
+
+  <div class="stage">
+    <div class="node data"><b>Forecast layer</b><span>day-ahead NWP + learned correction: PV and critical/flexible demand with quantiles</span></div>
+    <div class="node"><b>Rolling MILP optimiser</b><span>24 h horizon × 96 steps, HiGHS (open source); battery, import cap, voltage band, windowed flexible energy, outage reserve</span></div>
+    <div class="node"><b>Real-time correction</b><span>execute first hour, emergency discharge, priority shedding, flexible load deferral</span></div>
+    <div class="node"><b>Fallback rule engine</b><span>if the optimiser or network is unavailable, hold reserve and protect the lifeline circuit</span></div>
+    <div class="node money"><b>Equity dispatcher</b><span>equal critical energy per household before any second share; lifeline tier free</span></div>
+    <div class="node data"><b>Explainability + audit</b><span>per-step reason strings, invariant checks, results.json</span></div>
+  </div>
+
+  <div class="mid"><div><b>dispatch</b><br>↓<br><b>analytics</b><br>↓<br><b>payments</b><br>↓</div></div>
+
+  <div class="stage">
+    <div class="node data"><b>DISCOM console</b><span>24 h feeder risk, expected shortfall kW, transformer loading, loss proxy, voltage profile, DR actions</span></div>
+    <div class="node grid"><b>DISCOM operations</b><span>announced evening limits, outage schedule, feeder switching</span></div>
+    <div class="node money"><b>Tariff &amp; settlement</b><span>LT-I slab bill, net-metering export credit, DISCOM peak-reduction payment</span></div>
+    <div class="node money"><b>Community operator</b><span>RWA / local ESCO collects tiered fee, pays O&amp;M technician</span></div>
+    <div class="node"><b>Residents</b><span>SMS/WhatsApp-style prompts: run the pump before 3 pm; evening supply limited</span></div>
+  </div>
+</div>
+
+<div class="lane">
+  <div class="box"><b>Energy</b><p>PV → critical and flexible loads → battery → export; grid import within the transformer and voltage limits. No reverse flow beyond the sanctioned export cap.</p></div>
+  <div class="box"><b>Data</b><p>Meters and plugs → gateway → forecast + MILP → asset commands. DISCOM sends stress windows and receives risk, loading, loss and DR analytics.</p></div>
+  <div class="box"><b>Money</b><p>Household tiered fee (lifeline ₹0) + bill saving + avoided outage cost + DISCOM peak/loss payment → asset capex, O&amp;M and the local technician.</p></div>
+</div>
+
+<div class="foot">
+  Simulation scope in this prototype: forecast → MILP → plant model with a three-branch LinDistFlow feeder, real Hyderabad weather and archived day-ahead forecasts, calibrated load and outages.
+  <span class="tag">no hardware</span><span class="tag">no commercial solver</span><span class="tag">static dashboard</span>
+</div>
+</body></html>

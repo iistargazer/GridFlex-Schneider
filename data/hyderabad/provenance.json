@@ -1,0 +1,59 @@
+{
+ "built_at": "2026-10-23T00:51:52",
+ "site": {
+  "name": "Hyderabad (Banjara Hills)",
+  "lat": 17.385,
+  "lon": 78.487
+ },
+ "window": {
+  "start": "2026-08-23",
+  "end": "2026-10-21",
+  "days": 60
+ },
+ "observations": {
+  "source": "ERA5 reanalysis via Open-Meteo archive API",
+  "parameters": [
+   "shortwave_radiation",
+   "temperature_2m",
+   "wind_speed_10m"
+  ],
+  "url": "https://archive-api.open-meteo.com/v1/archive",
+  "time_standard": "Asia/Kolkata (IST)",
+  "licence": "Open-Meteo data under CC-BY 4.0; ERA5 (C3S)",
+  "kind": "real (reanalysis)",
+  "nasa_crosscheck": {
+   "source": "NASA POWER vs ERA5 GHI, 2026-05",
+   "nasa_mean": 264.2,
+   "era5_mean": 269.7,
+   "correlation": 0.94,
+   "n_hours": 744
+  }
+ },
+ "forecasts": {
+  "source": "Open-Meteo previous-runs API (archived operational forecasts)",
+  "variables": [
+   "shortwave_radiation_previous_day1",
+   "temperature_2m_previous_day1"
+  ],
+  "url": "https://previous-runs-api.open-meteo.com/v1/forecast",
+  "lead_time_hours": 24,
+  "licence": "Open-Meteo data under CC-BY 4.0",
+  "kind": "real"
+ },
+ "pv_model": {
+  "kind": "modelled from real GHI",
+  "detail": "Erbs diffuse fraction, isotropic transposition, tilt=lat, NOCT cell temperature, 14 % system losses",
+  "validation_pvgis": {
+   "year": 2023,
+   "pvgis_kwh_per_kwp": 1521.6,
+   "model_kwh_per_kwp": 1564.7,
+   "error_pct": 2.83
+  }
+ },
+ "pv_annual_mean_kwh_per_kwp": 1588.2,
+ "forecast_bias": {
+  "ghi_mean_obs": 227.82,
+  "ghi_mean_fc": 230.41,
+  "ghi_mae": 25.88
+ }
+}
