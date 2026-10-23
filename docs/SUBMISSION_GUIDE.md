@@ -15,10 +15,12 @@ No hardware. Every number below is in `outputs/results.json`.
 | Ownership, O&M, unit economics | [`docs/OPERATIONS.md`](OPERATIONS.md) + Economics tab | ₹144.6/hh-month cost, +₹126.0 net value |
 | Deck | [`docs/DECK.md`](DECK.md) | 11 slides, speaker notes, 3-minute demo script |
 
-The demo itself is `outputs/dashboard.html` — a single self-contained file (Chart.js vendored
-inside), works with no network, no server, no API key. `outputs/site/index.html` is byte-identical
-to it, written by the same `make_dashboard` call for static hosting. The page is built from
-`gridflex/dashboard.py`; `gridflex/report.py` assembles its payload and the PNG figures.
+The demo itself is `outputs/dashboard.html` — a single self-contained file with Chart.js, both
+typefaces and the stylesheet inlined; it works with no network, no server, no API key.
+`outputs/site/index.html` is byte-identical to it, written by the same `make_dashboard` call for
+static hosting. The page is built from `gridflex/dashboard.py`, with its visual system in
+`gridflex/assets/theme.css` and its type in `gridflex/assets/fonts`; `gridflex/report.py`
+assembles its payload and the PNG figures.
 
 ## 2. Form fields (draft answers)
 

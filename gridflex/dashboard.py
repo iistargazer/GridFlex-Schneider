@@ -1,9 +1,21 @@
 """The dashboard page: one self-contained HTML document, no network calls.
 
 The page is kept apart from `report.py` so its design, copy and interaction can
-change without touching the figures or the payload builder. `render()` fills
-exactly two placeholders: the vendored Chart.js bundle and the results payload.
-Everything else (type, palette, charts, microcopy) is in this file.
+change without touching the figures or the payload builder. `render()` inlines
+four things and writes one file: the type (woff2 faces from `assets/fonts`), the
+stylesheet (`assets/theme.css`), the vendored Chart.js bundle and the results
+payload. Nothing is fetched at view time, so the page reads the same from a file
+path, a static host or a judging room with no network.
+
+Design notes a maintainer should know
+-------------------------------------
+* The look is a printed feeder record, not an app: warm paper, a high-contrast
+  serif for display and large figures, Courier Prime for data and labels,
+  square corners, hairline rules, one rust accent. There are no gradients, no
+  pills and no drop shadows, and the only ornament is a faint paper grain.
+* Fonts are SIL Open Font License files under `assets/fonts`, inlined as data
+  URIs by `render()`. Editing `assets/theme.css` changes the page; nothing in
+  the payload or the figures moves.
 
 Design notes a maintainer should know
 -------------------------------------
@@ -18,7 +30,48 @@ Design notes a maintainer should know
 * The page is a file, not an app: hash routing, keyboard tab switching and a
   print stylesheet are the whole "routing" story.
 """
+import base64
 import json
+import os
+
+ASSETS = os.path.join(os.path.dirname(__file__), "assets")
+
+# Which faces are inlined, and in which order. Each family ships a `latin` and a
+# `latin-ext` subset; the rupee sign (U+20B9) lives in latin-ext, which is why
+# both are embedded instead of only the smaller one.
+FONT_FACES = [
+    ("Instrument Serif", "normal", 400, "instrument-400-normal"),
+    ("Instrument Serif", "italic", 400, "instrument-400-italic"),
+    ("Courier Prime", "normal", 400, "courier-400-normal"),
+    ("Courier Prime", "normal", 700, "courier-700-normal"),
+]
+UNICODE_RANGES = {
+    "latin": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,"
+             "U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,"
+             "U+2212,U+2215,U+FEFF,U+FFFD",
+    "latin-ext": "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,"
+                 "U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,"
+                 "U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF",
+}
+
+
+def font_css():
+    """@font-face rules with the woff2 files embedded, so the page stays a file."""
+    faces = []
+    for family, style, weight, stem in FONT_FACES:
+        for subset, ranges in UNICODE_RANGES.items():
+            path = os.path.join(ASSETS, "fonts", f"{stem}-{subset}.woff2")
+            if not os.path.exists(path):
+                continue          # a trimmed checkout still renders, in fallback type
+            with open(path, "rb") as fh:
+                b64 = base64.b64encode(fh.read()).decode("ascii")
+            faces.append(
+                "@font-face{font-family:'%s';font-style:%s;font-weight:%d;font-display:swap;"
+                "src:url(data:font/woff2;base64,%s) format('woff2');unicode-range:%s}"
+                % (family, style, weight, b64, ranges)
+            )
+    return "\n".join(faces)
+
 
 PAGE = r"""<!doctype html>
 <html lang="en">
@@ -28,401 +81,22 @@ PAGE = r"""<!doctype html>
 <title>GridFlex · neighbourhood reliability dashboard</title>
 <meta name="description" content="GridFlex: forecast-driven feeder reliability for a Hyderabad distribution transformer. Seven scenarios, real weather, one self-contained page.">
 <meta name="color-scheme" content="light dark">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2312684A'/%3E%3Cpath d='M18 6L9 18h5l-1 8 10-13h-5l1-7z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23211B15'/%3E%3Cpath d='M18 6L9 18h5l-1 8 10-13h-5l1-7z' fill='%23F1E9DA'/%3E%3C/svg%3E">
 <script src="chart.umd.min.js"></script>
 <style>
-:root{
-  --paper:#F7F6F1; --surface:#FFFFFF; --surface-2:#F1EFE6;
-  --ink:#121A17; --ink-2:#33413A; --muted:#586760;
-  --line:#E4E1D6; --line-2:#CFCDBE;
-  --green:#12684A; --pine:#0B3D2E; --mint:#4E9E7C;
-  --amber:#C8871F; --amber-ink:#8A5A10;
-  --clay:#A8422E; --blue:#3D6099; --blue-ink:#33517F;
-  --violet:#6A5A93; --slate:#7C8781;
-  --good-line:rgba(18,104,74,.28); --bad-line:rgba(168,66,46,.28); --warn-line:rgba(200,135,31,.34);
-  --tint-green:rgba(18,104,74,.07); --tint-amber:rgba(200,135,31,.10);
-  --tint-clay:rgba(168,66,46,.07); --tint-blue:rgba(61,96,153,.09);
-  --shadow:0 1px 2px rgba(18,26,23,.04), 0 10px 26px -20px rgba(18,26,23,.45);
-  --r:14px;
-  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --serif:ui-serif,"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
-  --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,"Liberation Mono",monospace;
-  --t-base:.94rem;
-}
-@media (prefers-color-scheme:dark){
-  :root{
-    --paper:#0E1513; --surface:#151E1A; --surface-2:#1B2521;
-    --ink:#E9EFEA; --ink-2:#C3CFC8; --muted:#93A29B;
-    --line:#24312B; --line-2:#33443C;
-    --green:#59C795; --pine:#2F9169; --mint:#6FBF9C;
-    --amber:#D9A04A; --amber-ink:#E4B567;
-    --clay:#D4735B; --blue:#7C9DD6; --blue-ink:#A7C0E6;
-    --violet:#A392CB; --slate:#8B9791;
-    --good-line:rgba(89,199,149,.34); --bad-line:rgba(212,115,91,.34); --warn-line:rgba(217,160,74,.36);
-    --tint-green:rgba(89,199,149,.10); --tint-amber:rgba(217,160,74,.12);
-    --tint-clay:rgba(212,115,91,.10); --tint-blue:rgba(124,157,214,.12);
-    --shadow:0 1px 2px rgba(0,0,0,.3), 0 12px 30px -22px rgba(0,0,0,.9);
-  }
-}
-*,*::before,*::after{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--paper);color:var(--ink);font:var(--t-base)/1.62 var(--sans);
-  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-h1,h2,h3,h4{margin:0;font-weight:600;letter-spacing:-.01em}
-h2{font:600 clamp(1.35rem,2.4vw,1.72rem)/1.22 var(--serif);letter-spacing:-.018em}
-h3{font-size:.96rem}
-h4{font-size:.83rem;letter-spacing:.01em}
-p{margin:0 0 10px}
-code{font-family:var(--mono);font-size:.86em;background:var(--surface-2);padding:1px 5px;border-radius:4px}
-.wrap{width:min(1148px,100% - 40px);margin-inline:auto}
-@media(max-width:560px){.wrap{width:min(1148px,100% - 28px)}}
-:focus-visible{outline:2px solid var(--green);outline-offset:2px;border-radius:6px}
-.skip{position:absolute;left:-9999px;top:0;background:var(--surface);padding:8px 12px;border-radius:0 0 8px 0;z-index:60}
-.skip:focus{left:0}
-
-/* ---------- masthead ---------- */
-.top{position:sticky;top:0;z-index:30;background:var(--paper);border-bottom:1px solid var(--line)}
-.top-in{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px 0 11px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:11px;color:inherit;text-decoration:none;border:0}
-.mark{width:34px;height:34px;border-radius:9px;background:var(--green);display:grid;place-items:center;flex:0 0 auto;
-  box-shadow:0 1px 2px rgba(0,0,0,.18)}
-.mark svg{width:17px;height:17px;display:block}
-.brand b{display:block;font:600 1.01rem/1.15 var(--sans);letter-spacing:-.015em}
-.brand em{display:block;font-style:normal;font-size:.73rem;color:var(--muted);margin-top:2px}
-.top-meta{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.tabbar{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;margin-top:1px}
-.tabbar::-webkit-scrollbar{display:none}
-.tabbtn{position:relative;border:0;background:transparent;padding:10px 13px 12px;font:500 .82rem/1 var(--sans);
-  color:var(--muted);cursor:pointer;white-space:nowrap;display:flex;gap:7px;align-items:baseline;
-  transition:color .18s ease}
-.tabbtn .n{font:600 .61rem/1 var(--mono);color:var(--line-2);letter-spacing:.06em;transition:color .18s ease}
-.tabbtn:hover{color:var(--ink)}
-.tabbtn.on{color:var(--ink);font-weight:600}
-.tabbtn.on .n{color:var(--green)}
-.tabbtn::after{content:"";position:absolute;left:11px;right:11px;bottom:-1px;height:2px;border-radius:2px;
-  background:var(--green);transform:scaleX(0);transform-origin:left;transition:transform .24s cubic-bezier(.2,.7,.3,1)}
-.tabbtn.on::after{transform:scaleX(1)}
-
-/* ---------- page ---------- */
-main{padding:24px 0 60px;min-height:58vh}
-.tab{display:none}
-.tab.on{display:block;animation:rise .34s cubic-bezier(.22,.7,.3,1) both}
-@keyframes rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
-.sec-head{max-width:76ch;margin:2px 0 18px}
-.sec-head h2{margin:8px 0 9px}
-.eyebrow{font:600 .69rem/1.3 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
-  display:flex;align-items:center;gap:8px}
-.eyebrow::before{content:"";width:16px;height:1px;background:var(--line-2);flex:0 0 auto}
-.lede{color:var(--muted);font-size:.92rem;margin:0;max-width:72ch}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;
-  box-shadow:var(--shadow);min-width:0}
-.card+.card{margin-top:0}
-.card-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:12px}
-.card-head .hint{margin-left:auto}
-.hint{font-size:.77rem;color:var(--muted)}
-.grid{display:grid;gap:16px}
-.split{grid-template-columns:minmax(0,1.65fr) minmax(0,1fr)}
-.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
-.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
-.mt{margin-top:16px}
-@media(max-width:880px){.split,.g2,.g3{grid-template-columns:minmax(0,1fr)}}
-
-/* ---------- chips, badges ---------- */
-.chip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line-2);border-radius:999px;
-  padding:3px 9px;font:600 .71rem/1.5 var(--sans);color:var(--ink-2);background:var(--surface);white-space:nowrap}
-.chip.good{color:var(--green);border-color:var(--good-line);background:var(--tint-green)}
-.chip.bad{color:var(--clay);border-color:var(--bad-line);background:var(--tint-clay)}
-.chip.warn{color:var(--amber-ink);border-color:var(--warn-line);background:var(--tint-amber)}
-.badge{display:inline-block;padding:2px 7px;border-radius:6px;font:600 .62rem/1.55 var(--sans);
-  letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
-.badge.real{background:var(--tint-green);color:var(--green)}
-.badge.cited{background:var(--tint-blue);color:var(--blue-ink)}
-.badge.assumption{background:var(--tint-amber);color:var(--amber-ink)}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:1px}
-
-/* ---------- hero ---------- */
-.hero{display:flex;flex-direction:column;gap:10px;
-  background:radial-gradient(115% 130% at 100% 0%,var(--tint-green) 0%,transparent 58%),var(--surface)}
-.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap}
-.big{display:flex;align-items:baseline;gap:8px;margin:6px 0 2px;
-  font:600 clamp(2.35rem,4.6vw,3.05rem)/.95 var(--mono);letter-spacing:-.045em;font-variant-numeric:tabular-nums}
-.big .unit{font:500 .84rem/1 var(--sans);letter-spacing:0;color:var(--muted);transform:translateY(-3px)}
-.hero-line{color:var(--muted);font-size:.88rem;margin:0;max-width:48ch}
-.hero-line b{color:var(--ink-2);font-weight:600;font-family:var(--mono);font-size:.94em}
-.ci{font:500 .73rem/1.6 var(--mono);color:var(--muted);letter-spacing:.005em;border-top:1px dashed var(--line);
-  padding-top:9px;margin-top:auto}
-
-/* ---------- hero grid + glance strip ---------- */
-.hero-grid{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);gap:30px;align-items:start}
-.hero-main{display:flex;flex-direction:column;min-width:0}
-.hero-side{border-left:1px solid var(--line);padding-left:28px;min-width:0}
-@media(max-width:900px){
-  .hero-grid{grid-template-columns:minmax(0,1fr);gap:20px}
-  .hero-side{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:18px}
-}
-.statstrip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:16px}
-@media(max-width:1120px){.statstrip{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:620px){.statstrip{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 15px;
-  box-shadow:var(--shadow);min-width:0}
-.stat b{display:block;font:600 1.3rem/1.15 var(--mono);letter-spacing:-.02em;
-  font-variant-numeric:tabular-nums;color:var(--ink)}
-.stat span{display:block;font-size:.71rem;line-height:1.4;color:var(--muted);margin-top:4px}
-.stat em{display:block;font:600 .68rem/1.45 var(--sans);font-style:normal;margin-top:7px}
-.stat em.good{color:var(--green)}
-.stat em.bad{color:var(--clay)}
-
-/* ---------- reliability ladder ---------- */
-.ladder{display:grid;gap:11px}
-.rung{display:grid;grid-template-columns:minmax(96px,1.35fr) minmax(0,1fr) 56px;gap:12px;align-items:center}
-.rung .lbl{font-size:.79rem;color:var(--ink-2);display:flex;align-items:center;gap:7px;min-width:0}
-.rung .lbl i{width:9px;height:9px;border-radius:2px;flex:0 0 auto;display:inline-block}
-.rung .track{position:relative;height:24px;border-radius:6px;background:var(--surface-2)}
-.rung .fill{position:absolute;left:0;top:0;bottom:0;border-radius:6px;min-width:3px;
-  transition:width .7s cubic-bezier(.2,.7,.3,1)}
-.rung .val{font:600 .95rem/1 var(--mono);font-variant-numeric:tabular-nums;text-align:right}
-.rung .val span{display:block;font:400 .66rem/1.5 var(--sans);color:var(--muted);letter-spacing:.03em}
-.rung.lead .lbl{font-weight:600;color:var(--ink)}
-.rung.lead .val{color:var(--green)}
-@media(max-width:720px){
-  .rung{grid-template-columns:minmax(0,1fr) 62px;row-gap:6px}
-  .rung .track{grid-column:1/-1;order:3}
-}
-
-/* ---------- plots ---------- */
-.plot{position:relative;height:240px;min-width:0}
-.plot.tall{height:300px}
-.plot.short{height:196px}
-.plot+.plot{margin-top:14px}
-
-/* ---------- day view ---------- */
-.daymeta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 4px}
-.facts-mini{display:flex;gap:20px;flex-wrap:wrap}
-.facts-mini div{font-size:.72rem;color:var(--muted);letter-spacing:.01em}
-.facts-mini b{display:block;font:600 .94rem/1.4 var(--mono);color:var(--ink);letter-spacing:0}
-.ribbon{display:grid;grid-template-columns:repeat(96,1fr);gap:2px;margin:10px 0 6px}
-.ribbon i{display:block;height:18px;border-radius:2px;background:var(--surface-2)}
-.ribbon i.normal{background:rgba(78,158,124,.35)}
-.ribbon i.evening{background:rgba(61,96,153,.42)}
-.ribbon i.stress{background:var(--amber)}
-.ribbon i.island{background:var(--clay)}
-.ribbon-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.71rem;color:var(--muted);margin-bottom:6px}
-.ribbon-legend span{display:inline-flex;align-items:center;gap:6px}
-.ribbon-legend i{width:9px;height:9px;border-radius:2px;display:inline-block}
-.narrative{margin-top:18px}
-.narrative h4{margin-bottom:8px}
-.events{list-style:none;margin:0;padding:0;max-height:300px;overflow:auto;border-top:1px solid var(--line)}
-.events li{display:grid;grid-template-columns:50px minmax(0,1fr);gap:10px;padding:7px 2px;align-items:baseline;
-  border-bottom:1px dashed var(--line);font-size:.79rem;color:var(--ink-2)}
-.events .t{font:600 .72rem/1.5 var(--mono);color:var(--muted)}
-.events li.alert .t{color:var(--clay)}
-.events li.alert span:last-child{color:var(--ink)}
-.fact-list{margin:0;display:grid}
-.fact-list div{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:.79rem}
-.fact-list div:first-child{border-top:0}
-.fact-list span{color:var(--muted)}
-.fact-list b{font:600 .8rem/1.5 var(--mono);font-variant-numeric:tabular-nums}
-
-/* ---------- tables ---------- */
-.scroll{overflow-x:auto;margin:0 -4px;padding:0 4px}
-.tbl{width:100%;border-collapse:collapse;font-size:.82rem;font-variant-numeric:tabular-nums}
-.tbl th{font:600 .67rem/1.3 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
-  text-align:right;padding:0 10px 8px;border-bottom:1px solid var(--line-2);white-space:nowrap}
-.tbl td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
-.tbl th:first-child,.tbl td:first-child{text-align:left}
-.tbl td.n{font-family:var(--mono)}
-.tbl td.src{white-space:normal;min-width:220px;color:var(--muted);font-size:.76rem;line-height:1.45}
-.tbl tbody tr:hover{background:var(--surface-2)}
-.tbl tr.me td{background:var(--tint-green)}
-.tbl tr.me td:first-child{font-weight:600}
-.tbl caption{caption-side:top;text-align:left;font-size:.74rem;color:var(--muted);padding-bottom:8px}
-
-/* ---------- CI ranges ---------- */
-.cirange{display:grid;gap:9px;margin:8px 0 16px}
-.cirange .row{display:grid;grid-template-columns:180px minmax(0,1fr) 150px;gap:12px;align-items:center}
-.cirange .name{font-size:.79rem;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cirange .track{position:relative;height:8px;border-radius:99px;background:var(--surface-2)}
-.cirange .band{position:absolute;top:0;bottom:0;border-radius:99px;opacity:.85}
-.cirange .mean{position:absolute;top:-3px;width:3px;height:14px;border-radius:2px;background:var(--ink);transform:translateX(-1px)}
-.cirange .num{font:500 .73rem/1.4 var(--mono);color:var(--muted);text-align:right}
-@media(max-width:700px){.cirange .row{grid-template-columns:1fr;gap:4px}.cirange .num{text-align:left}}
-
-/* ---------- DISCOM ---------- */
-.heat{display:grid;grid-template-columns:repeat(24,minmax(30px,1fr));gap:3px}
-.heat .cell{border-radius:6px;padding:6px 5px;min-height:56px;display:flex;flex-direction:column;
-  justify-content:space-between;border:1px solid var(--line)}
-.heat .h{font:600 .59rem/1 var(--mono);color:var(--muted);letter-spacing:.02em}
-.heat .p{font:600 .71rem/1 var(--mono)}
-.heat-legend{display:flex;align-items:center;gap:9px;font-size:.71rem;color:var(--muted);margin-top:10px;flex-wrap:wrap}
-.heat-legend .bar{width:96px;height:7px;border-radius:99px;background:linear-gradient(90deg,rgba(168,66,46,.10),var(--clay))}
-.actions{display:grid;gap:10px}
-.action{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:12px;padding:13px 14px;
-  border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
-.action .rank{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
-  font:600 .73rem/1 var(--mono);background:var(--ink);color:var(--paper)}
-.action .title{font-weight:600;font-size:.855rem;line-height:1.35}
-.action .detail{font-size:.775rem;color:var(--muted);margin-top:3px}
-.action .basis{font-size:.72rem;color:var(--muted);margin-top:5px;font-style:italic}
-.action .credit{font:600 .92rem/1.1 var(--mono);text-align:right;color:var(--green)}
-.action .credit span{display:block;font:400 .67rem/1.5 var(--sans);color:var(--muted);margin-top:4px}
-.meter{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden;margin-top:8px}
-.meter i{display:block;height:100%;border-radius:99px;background:var(--green);transition:width .6s ease}
-.action .meter{background:var(--line)}
-
-/* ---------- equity ---------- */
-.arch h4{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:7px}
-.arch .hh{font:600 1.5rem/1 var(--mono);letter-spacing:-.02em}
-.arch .hs{font-size:.73rem;color:var(--muted);margin:4px 0 14px}
-.arch .m{margin-bottom:12px}
-.arch .m .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
-  font-size:.74rem;color:var(--ink-2);margin-bottom:5px}
-.arch .m .top b{font-family:var(--mono);font-size:.79rem;font-variant-numeric:tabular-nums}
-.bigindex{font:600 2.1rem/1 var(--mono);letter-spacing:-.03em;color:var(--green);margin:6px 0 2px}
-.bigindex span{font:400 .72rem/1 var(--sans);color:var(--muted);letter-spacing:0;margin-left:6px}
-
-/* ---------- economics ---------- */
-.ledger{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px}
-.led{display:grid}
-.led .row{display:grid;grid-template-columns:1fr auto;gap:10px;padding:8px 0;border-top:1px dashed var(--line);font-size:.82rem}
-.led .row:first-of-type{border-top:0}
-.led .row b{font:600 .85rem/1.4 var(--mono);font-variant-numeric:tabular-nums}
-.led .row b.neg{color:var(--clay)}
-.led .row b.pos{color:var(--green)}
-.led h4{margin-bottom:4px;display:flex;align-items:center;gap:7px}
-.netrow{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-top:16px;
-  padding-top:14px;border-top:1px solid var(--line-2);flex-wrap:wrap}
-.netrow .lbl{font-size:.8rem;color:var(--muted)}
-.netrow b{font:600 1.55rem/1 var(--mono);letter-spacing:-.02em;color:var(--green)}
-.rangetrack{position:relative;height:9px;border-radius:99px;background:var(--surface-2);margin:14px 0 4px}
-.rangetrack .zero{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--line-2);border-radius:2px}
-.rangetrack .rng{position:absolute;top:0;bottom:0;border-radius:99px;background:var(--tint-green);border:1px solid var(--good-line)}
-.rangetrack .pin{position:absolute;top:-4px;width:3px;height:17px;border-radius:2px;background:var(--green)}
-.rangelabels{display:flex;justify-content:space-between;font:500 .7rem/1.4 var(--mono);color:var(--muted)}
-.tiers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0 4px}
-.tier{border:1px solid var(--line);border-radius:11px;padding:12px 13px;background:var(--surface-2)}
-.tier b{display:block;font:600 1.18rem/1 var(--mono);margin:7px 0 3px}
-.tier span{font-size:.71rem;color:var(--muted)}
-.tier.free{border-color:var(--good-line);background:var(--tint-green)}
-.tier.free b{color:var(--green)}
-
-/* ---------- what-if ---------- */
-.ctrl{display:grid;grid-template-columns:148px minmax(0,1fr);gap:14px;align-items:center;padding:10px 0;
-  border-top:1px solid var(--line)}
-.ctrl:first-child{border-top:0;padding-top:2px}
-.ctrl label,.ctrl .lbl{font-size:.78rem;color:var(--ink-2);font-weight:500}
-.ctrl .seg{justify-self:start}
-.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap}
-.seg button{border:0;background:transparent;color:var(--ink-2);font:500 .755rem/1 var(--sans);
-  padding:7px 11px;border-radius:7px;cursor:pointer;white-space:nowrap;transition:background .16s ease,color .16s ease}
-.seg button:hover{color:var(--ink)}
-.seg button[aria-pressed=true]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(18,26,23,.14)}
-@media(max-width:700px){.ctrl{grid-template-columns:minmax(0,1fr)}}
-.console{background:#0C1411;border:1px solid #1D2A25;border-radius:var(--r);padding:20px;color:#E9F1EC;
-  box-shadow:var(--shadow)}
-.console .eyebrow{color:#93A89E}
-.console .eyebrow::before{background:#2C3D36}
-.console h3{color:#fff;margin-top:6px;font-size:1.02rem}
-.console .card-head{border-bottom:1px solid rgba(233,241,236,.12);padding-bottom:12px}
-.console .hint{color:#93A89E}
-.clock{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:12px 0 4px}
-.clock b{font:600 2.15rem/1 var(--mono);letter-spacing:-.03em;color:#fff;font-variant-numeric:tabular-nums}
-.clock .soc{font:500 .74rem/1.5 var(--mono);color:#93A89E}
-.controls{display:grid;grid-template-columns:108px minmax(0,1fr);gap:16px;align-items:center;margin:6px 0 12px}
-@media(max-width:620px){.controls{grid-template-columns:minmax(0,1fr)}}
-.player-facts{display:flex;gap:20px;flex-wrap:wrap;margin:4px 0 14px}
-.player-facts div{font-size:.66rem;color:#93A89E;text-transform:uppercase;letter-spacing:.09em}
-.player-facts b{display:block;font:600 .94rem/1.5 var(--mono);color:#E9F1EC;letter-spacing:0;text-transform:none}
-.btn{border:1px solid var(--line-2);background:var(--surface);color:var(--ink);border-radius:9px;
-  padding:7px 13px;font:600 .775rem/1.2 var(--sans);cursor:pointer;
-  transition:background .16s ease,transform .12s ease}
-.btn:hover{background:var(--surface-2)}
-.btn:active{transform:translateY(1px)}
-.console .btn{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.22);color:#fff}
-.console .btn:hover{background:rgba(255,255,255,.13)}
-.linkbtn{border:0;background:none;padding:0;color:var(--green);font:inherit;font-weight:600;
-  cursor:pointer;border-bottom:1px solid var(--good-line)}
-select{appearance:none;-webkit-appearance:none;background:var(--surface);border:1px solid var(--line-2);
-  border-radius:9px;padding:7px 30px 7px 11px;font:500 .8rem/1.4 var(--sans);color:var(--ink);cursor:pointer;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23586760' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 10px center}
-.console select{background-color:#131E19;border-color:rgba(233,241,236,.22);color:#E9F1EC}
-input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;cursor:pointer}
-input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:99px;background:var(--track,var(--surface-2))}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;
-  background:var(--surface);border:2px solid var(--green);margin-top:-5.5px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
-input[type=range]::-moz-range-track{height:4px;border-radius:99px;background:var(--track,var(--surface-2))}
-input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--surface);
-  border:2px solid var(--green)}
-.console input[type=range]{--track:rgba(255,255,255,.18)}
-.console input[type=range]::-webkit-slider-thumb{background:#0C1411;border-color:#7FD3A8}
-.console input[type=range]::-moz-range-thumb{background:#0C1411;border-color:#7FD3A8}
-
-/* ---------- method ---------- */
-.prov h4{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.prov ul{margin:0;padding-left:16px}
-.prov li{font-size:.79rem;color:var(--ink-2);margin:5px 0;line-height:1.5}
-.prov li span{color:var(--muted)}
-.statline{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px}
-.statline div{background:var(--surface-2);border-radius:10px;padding:10px 12px}
-.statline b{display:block;font:600 .98rem/1.3 var(--mono)}
-.statline span{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;line-height:1.4;display:block}
-@media(max-width:700px){.statline{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;counter-reset:s}
-.step{position:relative;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
-.step::before{counter-increment:s;content:counter(s,decimal-leading-zero);font:600 .68rem/1 var(--mono);
-  color:var(--green);letter-spacing:.08em}
-.step b{display:block;margin:8px 0 4px;font-size:.85rem}
-.step p{font-size:.755rem;color:var(--muted);margin:0;line-height:1.5}
-@media(max-width:880px){.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.limits{display:grid;counter-reset:l}
-.limits div{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:10px 0;
-  border-top:1px solid var(--line);font-size:.82rem;color:var(--ink-2);line-height:1.55}
-.limits div::before{counter-increment:l;content:counter(l,decimal-leading-zero);font:600 .68rem/1.9 var(--mono);
-  color:var(--clay)}
-.filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.filter button{border:1px solid var(--line-2);background:var(--surface);color:var(--ink-2);
-  border-radius:999px;padding:4px 11px;font:600 .71rem/1.5 var(--sans);cursor:pointer}
-.filter button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.filter button span{opacity:.65;margin-left:4px;font-weight:500}
-
-/* ---------- empty + footer ---------- */
-.empty{max-width:54ch;margin:56px auto;text-align:center}
-.empty .mark{width:46px;height:46px;margin:0 auto 18px;border-radius:12px}
-.empty h2{margin-bottom:10px}
-.empty p{color:var(--muted);font-size:.9rem}
-.empty .hint{display:block;margin-top:14px}
-.empty-inline{border:1px dashed var(--line-2);border-radius:12px;padding:18px;color:var(--muted);
-  font-size:.82rem;background:var(--surface-2)}
-footer{border-top:1px solid var(--line);padding:18px 0 44px;color:var(--muted);font-size:.74rem}
-footer .in{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:baseline}
-footer code{font-size:.72rem}
-noscript{display:block;padding:16px;background:var(--tint-amber);border-bottom:1px solid var(--warn-line);font-size:.85rem}
-@media (prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation:none!important;transition:none!important}
-}
-@media print{
-  .top{position:static}
-  .tabbar,.no-print{display:none!important}
-  .tab{display:block!important;page-break-inside:avoid;margin-bottom:20px}
-  .card{box-shadow:none;border-color:#ccc}
-  .plot{height:190px}
-  body{background:#fff;font-size:10.5pt}
-  .console{background:#fff;color:#111;border-color:#ccc}
-  .console h3,.clock b{color:#111}
-  .console .eyebrow,.console .hint,.clock .soc,.player-facts div{color:#555}
-  .player-facts b{color:#111}
-  footer{padding-bottom:8px}
-}
+__FONTS__
+__CSS__
 </style>
 </head>
 <body>
+<div class="grain" aria-hidden="true"></div>
 <a class="skip" href="#main">Skip to content</a>
 <noscript>This dashboard draws its charts from a results payload embedded in the file. It needs JavaScript; the numbers are also in <code>outputs/results.json</code>.</noscript>
 <header class="top">
   <div class="wrap top-in">
     <a class="brand" href="#overview">
-      <span class="mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M18 4L8 18h6l-1 10L24 13h-6l1-9z" fill="#fff"/></svg></span>
-      <span><b>GridFlex</b><em id="sitemeta">neighbourhood reliability</em></span>
+      <span class="mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M18 4L8 18h6l-1 10L24 13h-6l1-9z" fill="currentColor"/></svg></span>
+      <span><b>GridFlex</b><em id="sitemeta">neighbourhood reliability record</em></span>
     </a>
     <div class="top-meta">
       <span class="chip good">real weather</span>
@@ -453,8 +127,8 @@ noscript{display:block;padding:16px;background:var(--tint-amber);border-bottom:1
       </div>
       <div class="daymeta" id="daymeta"></div>
       <div class="ribbon-legend">
-        <span><i style="background:rgba(78,158,124,.45)"></i>normal</span>
-        <span><i style="background:rgba(61,96,153,.55)"></i>evening allocation</span>
+        <span><i style="background:var(--mint)"></i>normal</span>
+        <span><i style="background:var(--blue)"></i>evening allocation</span>
         <span><i style="background:var(--amber)"></i>DISCOM stress</span>
         <span><i style="background:var(--clay)"></i>feeder off</span>
       </div>
@@ -648,21 +322,19 @@ noscript{display:block;padding:16px;background:var(--tint-amber);border-bottom:1
         <div class="step"><b>Fall back</b><p>If the optimiser or network is unavailable, hold reserve and protect the lifeline circuit.</p></div>
       </div>
     </div>
-    <div class="grid split mt">
-      <div class="card">
-        <div class="card-head"><h3>Assumptions, with sources</h3><span class="hint" id="assumecount"></span></div>
-        <div class="filter" id="afilter"></div>
-        <div class="scroll"><table class="tbl" id="assumptions"></table></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><h3>Limitations, stated not hidden</h3></div>
-        <div class="limits">
-          <div>No phase imbalance and no protection study. The feeder is a three-branch LinDistFlow approximation, not a network model.</div>
-          <div>Unannounced outages cannot be forecast. They are handled by a held reserve, not by prediction.</div>
-          <div>Second-life battery degradation and round-trip efficiency are simplified to a wear cost and one efficiency figure.</div>
-          <div>Load is calibrated to Telangana LT-I consumption and a published Indian residential shape, not metered at a pilot.</div>
-          <div>Every reliability number is simulated. A pilot would meter the same four quantities this page reports.</div>
-        </div>
+    <div class="card mt">
+      <div class="card-head"><h3>Assumptions, with sources</h3><span class="hint" id="assumecount"></span></div>
+      <div class="filter" id="afilter"></div>
+      <div class="scroll"><table class="tbl assume" id="assumptions"></table></div>
+    </div>
+    <div class="card mt">
+      <div class="card-head"><h3>Limitations, stated not hidden</h3><span class="hint">five things this model does not claim</span></div>
+      <div class="limits two">
+        <div>No phase imbalance and no protection study. The feeder is a three-branch LinDistFlow approximation, not a network model.</div>
+        <div>Unannounced outages cannot be forecast. They are handled by a held reserve, not by prediction.</div>
+        <div>Second-life battery degradation and round-trip efficiency are simplified to a wear cost and one efficiency figure.</div>
+        <div>Load is calibrated to Telangana LT-I consumption and a published Indian residential shape, not metered at a pilot.</div>
+        <div>Every reliability number is simulated. A pilot would meter the same four quantities this page reports.</div>
       </div>
     </div>
   </section>
@@ -673,7 +345,8 @@ noscript{display:block;padding:16px;background:var(--tint-amber);border-bottom:1
 <footer>
   <div class="wrap in">
     <div id="footmeta">GridFlex</div>
-    <div>static file · no network requests · rebuild with <code>python run.py</code></div>
+    <div class="colophon">One file, nothing fetched at view time. Set in Instrument Serif and
+      Courier Prime (SIL OFL, inlined). Rebuild with <code>python run.py</code>.</div>
   </div>
 </footer>
 
@@ -688,8 +361,8 @@ var META = D.meta || {}, ECON = D.econ || {}, EQUITY = D.equity || {};
 var SIZING = D.sizing || {}, DISCOM = D.discom || {};
 var WHATIF = (D.whatif && D.whatif.results) || [], ASSUME = D.assumptions || [];
 var REASONS = D.reasons || {};
-var SANS = 'system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
-var MONO = 'ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace';
+var SANS = '"Courier Prime",ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace';
+var MONO = SANS;
 var RM = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 var $ = function(s, r){ return (r || document).querySelector(s); };
 var $$ = function(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
@@ -745,7 +418,9 @@ var charts = {};
 function chart(id, cfg){
   var el = document.getElementById(id);
   if (!el) return null;
-  if (charts[id]) charts[id].destroy();
+  // Stop a running animation before destroying: a chart torn down mid-tick can
+  // throw from inside Chart.js' animation loop when a tab is re-drawn quickly.
+  if (charts[id]) { charts[id].stop(); charts[id].destroy(); }
   charts[id] = new Chart(el, cfg);
   return charts[id];
 }
@@ -756,10 +431,10 @@ function chartDefaults(){
   Chart.defaults.borderColor = T.line;
   Chart.defaults.animation = RM ? false : {duration:420, easing:"easeOutCubic"};
   var t = Chart.defaults.plugins.tooltip;
-  t.backgroundColor = T.dark ? "#E9EFEA" : "#121A17";
-  t.titleColor = T.dark ? "#121A17" : "#FFFFFF";
-  t.bodyColor = T.dark ? "rgba(18,26,23,.84)" : "rgba(255,255,255,.9)";
-  t.borderWidth = 0; t.cornerRadius = 10; t.padding = 11;
+  t.backgroundColor = T.dark ? "#EDE2CE" : "#211B15";
+  t.titleColor = T.dark ? "#211B15" : "#FAF4E7";
+  t.bodyColor = T.dark ? "rgba(33,27,21,.84)" : "rgba(250,244,231,.9)";
+  t.borderWidth = 0; t.cornerRadius = 0; t.padding = 11;
   t.boxWidth = 8; t.boxHeight = 8; t.usePointStyle = true; t.displayColors = true;
   t.titleFont = {family:SANS, size:11, weight:"600"};
   t.bodyFont = {family:MONO, size:11.5};
@@ -904,7 +579,7 @@ function drawOverview(){
       '<div class="big">' + nf(g, 2) + '<span class="unit">h/day</span></div>' +
       '<p class="hero-line">critical supply interrupted. The same panels and battery with no control: <b>' +
         nf(u, 2) + '</b>. The bare grid: <b>' + nf(q, 2) + '</b>.</p>' +
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">' +
+      '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:14px">' +
         (cut != null ? '<span class="chip good">▼ ' + nf(cut, 0) + '% vs unmanaged</span>' : '') +
         '<span class="chip">' + (META.test_days || "–") + ' held-out days</span>' +
         '<span class="chip">' + (META.n_hh || "–") + ' homes · ' + (META.pv_kwp || "–") + ' kWp PV · ' +
@@ -1072,15 +747,22 @@ function drawScenarios(){
   var labels = order.map(scLabel);
   var basis = SEEDS ? SEEDS + "-seed mean" : "single-seed replay";
 
+  // A horizontal bar chart puts the scenario names on the y axis, so the numeric
+  // formatter belongs to x. Applying it to the category axis printed tick indices.
+  var hbars = axes({maxTicks:1});
+  hbars.y.grid = {display:false};
+  hbars.y.ticks.color = T.ink2;
+  hbars.y.ticks.font = {family:MONO, size:10.5};
+  hbars.x.grid = {color:T.line, drawTicks:false};
+
   chart("ablation", {
     type:"bar",
     data:{labels:labels, datasets:[{data:order.map(function(m){ return met(m, "outage_hours_per_day"); }),
-      backgroundColor:order.map(function(m){ return sc[m][1]; }), borderRadius:4, borderSkipped:false,
-      maxBarThickness:24}]},
+      backgroundColor:order.map(function(m){ return sc[m][1]; }), borderRadius:0, borderSkipped:false,
+      maxBarThickness:18}]},
     options: base({indexAxis:"y", plugins:{legend:{display:false}, tooltip:{callbacks:{label:function(c){
       return " " + nf(c.parsed.x, 2) + " interrupted h/day";
-    }}}}, scales:axes({maxTicks:1, fmt:function(v){ return nf(v, 1); },
-      x:{grid:{color:T.line, drawTicks:false}}, y:{grid:{display:false}, ticks:{color:T.ink2, padding:8}}})}),
+    }}}}, scales:hbars}),
     plugins:[barLabels(function(v){ return nf(v, 2); })]
   });
 
@@ -1091,6 +773,13 @@ function drawScenarios(){
       " h/day apart on this window: the learned forecast is not what earns the gain here, the optimiser and demand response are (" +
       nf(drop, 2) + " h/day between MPC with and without flexible loads). The docs report this rather than hiding it.";
   }
+
+  var bills = axes({});
+  bills.y.grid = {display:false};
+  bills.y.ticks.color = T.ink2;
+  bills.y.ticks.font = {family:MONO, size:10.5};
+  bills.x.grid = {color:T.line, drawTicks:false};
+  bills.x.ticks.callback = function(v){ return "₹" + int(v); };
 
   var rows = [
     ["outage_hours_per_day", "Interrupted h/day", 2],
@@ -1112,16 +801,14 @@ function drawScenarios(){
   chart("billbars", {
     type:"bar",
     data:{labels:MODES.map(scLabel), datasets:[{data:MODES.map(function(m){ return met(m, "bill_inr_per_hh_month"); }),
-      backgroundColor:MODES.map(function(m){ return rgba(sc[m][1], .82); }), borderRadius:4,
-      borderSkipped:false, maxBarThickness:44}]},
+      backgroundColor:MODES.map(function(m){ return rgba(sc[m][1], .82); }), borderRadius:0,
+      borderSkipped:false, maxBarThickness:18}]},
     options: base({
+      indexAxis:"y",
       plugins:{legend:{display:false}, tooltip:{callbacks:{label:function(c){
-        return " ₹" + int(c.parsed.y) + " per household per month";
+        return " ₹" + int(c.parsed.x) + " per household per month";
       }}}},
-      scales:axes({
-        fmt:function(v){ return "₹" + int(v); },
-        xopts:{ticks:{maxTicksLimit:7, color:T.muted, font:{family:SANS, size:10}}}
-      })
+      scales:bills
     }),
     plugins:[barLabels(function(v){ return "₹" + int(v); })]
   });
@@ -1248,8 +935,7 @@ function drawDiscom(){
     rows.map(function(r){ return '<tr><td>' + r[0] + '</td><td class="n">' + r[1] + '</td></tr>'; }).join("") + '</tbody>';
 }
 function kpi(v, l){
-  return '<div class="card" style="padding:14px 16px"><b style="display:block;font:600 1.5rem/1.15 ' + MONO +
-    ';letter-spacing:-.02em;color:var(--ink)">' + v + '</b><span style="font-size:.72rem;color:var(--muted)">' + l + '</span></div>';
+  return '<div class="card kpi"><b>' + v + '</b><span>' + l + '</span></div>';
 }
 
 /* ---------- equity ---------- */
@@ -1668,6 +1354,8 @@ function drawMethod(){
 function renderAssumptions(kind){
   var rows = ASSUME.filter(function(a){ return kind === "all" || a.kind === kind; });
   $("#assumptions").innerHTML =
+    '<colgroup><col style="width:19%"><col style="width:17%"><col style="width:7%">' +
+    '<col style="width:11%"><col style="width:32%"><col style="width:14%"></colgroup>' +
     '<thead><tr><th>parameter</th><th>value</th><th>unit</th><th>kind</th><th>source</th><th>range</th></tr></thead><tbody>' +
     rows.map(function(a){
       return '<tr><td>' + esc(a.param.replace(/_/g, " ")) + '</td><td class="n">' + esc(a.value) +
@@ -1763,7 +1451,7 @@ function emptyState(){
   var main = $("#main");
   if (!main) return;
   main.innerHTML = '<div class="wrap"><div class="empty">' +
-    '<span class="mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" style="width:22px;height:22px"><path d="M18 4L8 18h6l-1 10L24 13h-6l1-9z" fill="#fff"/></svg></span>' +
+    '<span class="mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" style="width:22px;height:22px"><path d="M18 4L8 18h6l-1 10L24 13h-6l1-9z" fill="currentColor"/></svg></span>' +
     '<h2>No results in this page yet</h2>' +
     '<p>This is the dashboard shell. It fills itself from a results payload written by <code>python run.py</code>.</p>' +
     '<p class="hint">If you opened a page from a completed run, the payload is missing — rebuild both files with <code>make_dashboard</code>. The numbers are always also in <code>outputs/results.json</code>.</p>' +
@@ -1789,7 +1477,10 @@ else go();
 
 
 def render(payload, chart_js):
-    """Return the finished page: library inlined, payload embedded, nothing fetched."""
+    """Return the finished page: type, stylesheet, library and payload inlined."""
     page = PAGE.replace('<script src="chart.umd.min.js"></script>',
                         "<script>" + chart_js + "</script>")
+    with open(os.path.join(ASSETS, "theme.css"), encoding="utf-8") as fh:
+        page = page.replace("__CSS__", fh.read())
+    page = page.replace("__FONTS__", font_css())
     return page.replace("__DATA__", json.dumps(payload, default=float))

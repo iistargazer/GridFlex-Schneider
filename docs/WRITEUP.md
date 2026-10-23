@@ -156,8 +156,10 @@ no hardware-in-the-loop and no pilot. Each of these is visible in the dashboard'
 `tests/test_artifacts.py` fails if the pair diverges or if a figure quoted in these docs stops
 matching `outputs/results.json`.
 
-The page itself lives in `gridflex/dashboard.py`; `report.py` assembles its payload and the PNG
-figures. Seven tabs: Overview (headline, reliability ladder, supply ribbon, day view), Scenarios
+The page itself lives in `gridflex/dashboard.py`, with its visual system in
+`gridflex/assets/theme.css` and its two typefaces embedded from `gridflex/assets/fonts`;
+`report.py` assembles its payload and the PNG figures. Seven tabs: Overview (headline, reliability
+ladder, supply ribbon, day view), Scenarios
 (ablation and CI ranges), DISCOM (risk strip, voltage, monetised actions), Equity (archetypes,
 Jain, rule sensitivity), Economics (ledger, VoLL range, sizing frontier, fee tiers), What-if
 (36 precomputed cases, day player), and Method (provenance, forecast accuracy, limitations,

@@ -90,7 +90,8 @@ reliability before expanding.
     python run.py --quick --no-whatif                # ~4 min smoke test
 
 Data are cached in `data/hyderabad/`; `--refresh-weather` re-fetches them. The dashboard is a
-single file with Chart.js vendored in, so the judging demo needs no network.
+single file with Chart.js, its stylesheet and both typefaces inlined, so the judging demo needs no
+network.
 
 **Reproducibility caveat.** The MILP runs with an 8 s solve limit and a 0.2 % optimality gap to
 keep the 20-seed sweep inside half an hour. Solutions are therefore near-optimal, not identical:
@@ -112,11 +113,13 @@ moves the frontier by exactly the fee, and the allocation rule is measurable on 
 
 ## The dashboard is a build artefact
 
-The page is source, not output: `gridflex/dashboard.py` holds the HTML, CSS, Chart.js code and
-copy, `gridflex/report.py` assembles the payload and the PNG figures, and `make_dashboard(payload,
-path, site_path)` writes the same rendered string to `outputs/dashboard.html` and
-`outputs/site/index.html`. There is exactly one owner of both files, so they cannot drift; both
-are committed.
+The page is source, not output: `gridflex/dashboard.py` holds the HTML template, the copy, the tab
+composition and the chart wiring, `gridflex/assets/theme.css` is the visual system (warm paper
+palette, type scale, hairline rules, print styles), `gridflex/assets/fonts/` holds the two
+SIL OFL typefaces that `render()` embeds as data URIs, `gridflex/report.py` assembles the payload
+and the PNG figures, and `make_dashboard(payload, path, site_path)` writes the same rendered
+string to `outputs/dashboard.html` and `outputs/site/index.html`. There is exactly one owner of
+both files, so they cannot drift; both are committed.
 
 - **Regenerate:** `python run.py` (a full run) is the supported path - it rebuilds the payload and
 the page together. Do not hand-edit or copy either HTML file.
@@ -125,8 +128,8 @@ the page together. Do not hand-edit or copy either HTML file.
   committed files byte for byte and checks eleven headline figures still appear in the docs.
 - **Inspect:** open `outputs/dashboard.html` directly (file path is fine) or serve
   `outputs/site/`. Seven tabs: Overview, Scenarios, DISCOM, Equity, Economics, What-if, Method.
-- **No network:** Chart.js is inlined at build time, so the page makes no requests and needs no
-  CDN, server or API key.
+- **No network:** Chart.js, the stylesheet and the font faces are inlined at build time, so the
+  page makes no requests and needs no CDN, server or API key.
 
 ## Version control and the delivered build
 
@@ -171,7 +174,7 @@ place rather than deleted so the baseline history and the current tree stay comp
 
 ## Publishing the demo
 
-Upload **one file**: `outputs/site/index.html` (about 630 KB). It is written by the same
+Upload **one file**: `outputs/site/index.html` (about 800 KB). It is written by the same
 `make_dashboard` call that writes `outputs/dashboard.html`, so the two are byte-identical, and it
 is fully self-contained: Chart.js is inlined, all 14 days of scenario data are embedded, there are
 no external requests and no absolute paths. It renders the same from a file path or a web server,

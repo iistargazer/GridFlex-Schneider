@@ -104,9 +104,12 @@ feeder's own outage history, technical loss (2.78 kWh/day, 1.33 kW at peak) and 
 
 ## The dashboard a judge opens
 
-`outputs/dashboard.html` is the deliverable: one self-contained file, Chart.js inlined and the
-whole results payload embedded, with no network requests at view time. Seven tabs, each answering
-a different question:
+`outputs/dashboard.html` is the deliverable: one self-contained file — Chart.js, the two typefaces
+and the stylesheet inlined, the whole results payload embedded — with no network requests at view
+time. It is set as a printed feeder record rather than an app: warm paper, Instrument Serif for
+display and large figures, Courier Prime for data and labels, one rust accent, hairline rules and a
+faint paper grain. Light and dark are both designed rather than inverted. Seven tabs, each
+answering a different question:
 
 | Tab | What it shows |
 |---|---|
@@ -139,7 +142,9 @@ asset, or if a headline figure quoted in these docs stops matching `outputs/resu
 | `gridflex/sizing.py` | battery × tariff-scheme sweep, Pareto/knee on low-income net cost |
 | `gridflex/discom.py` | feeder risk, loss, ranked DR actions with rupee credit |
 | `gridflex/report.py` | results payload for the page + the matplotlib PNG figures |
-| `gridflex/dashboard.py` | the page itself: HTML/CSS/Chart.js, tab composition and copy |
+| `gridflex/dashboard.py` | the page template: markup, copy, tab composition, Chart.js wiring |
+| `gridflex/assets/theme.css` | the visual system: warm palette, type scale, rules, print styles |
+| `gridflex/assets/fonts/` | Instrument Serif + Courier Prime woff2 subsets (SIL OFL 1.1) |
 | `gridflex/explain.py` | per-step controller reasons shown in the dashboard |
 
 Artefacts: `outputs/dashboard.html` (offline, 7 tabs) and its byte-identical publishing copy
